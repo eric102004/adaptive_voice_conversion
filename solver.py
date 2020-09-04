@@ -12,6 +12,7 @@ from data_utils import PickleDataset
 from utils import *
 from functools import reduce
 from collections import defaultdict
+import time
 
 class Solver(object):
     def __init__(self, config, args):
@@ -38,13 +39,13 @@ class Solver(object):
 
     def save_model(self, iteration):
         # save model and discriminator and their optimizer
-        torch.save(self.model.state_dict(), f'{self.args.store_model_path}.ckpt')
-        torch.save(self.opt.state_dict(), f'{self.args.store_model_path}.opt')
+        torch.save(self.model.state_dict(), f'{self.args.store_model_path}_{iteration+1}.ckpt')
+        torch.save(self.opt.state_dict(), f'{self.args.store_model_path}_{iteration+1}.opt')
 
     def save_config(self):
-        with open(f'{self.args.store_model_path}.config.yaml', 'w') as f:
+        with open(f'{self.args.store_model_path}_config.yaml', 'w') as f:
             yaml.dump(self.config, f)
-        with open(f'{self.args.store_model_path}.args.yaml', 'w') as f:
+        with open(f'{self.args.store_model_path}_args.yaml', 'w') as f:
             yaml.dump(vars(self.args), f)
         return
 
@@ -97,6 +98,7 @@ class Solver(object):
         return meta
 
     def train(self, n_iterations):
+        start_time = time.time()
         for iteration in range(n_iterations):
             if iteration >= self.config['annealing_iters']:
                 lambda_kl = self.config['lambda']['lambda_kl']
@@ -110,8 +112,12 @@ class Solver(object):
             loss_rec = meta['loss_rec']
             loss_kl = meta['loss_kl']
 
+            d_time = time.time()-start_time
+            hr = int(d_time//3600)
+            m = int((d_time%3600)//60)
+            sec = round(d_time%60)
             print(f'AE:[{iteration + 1}/{n_iterations}], loss_rec={loss_rec:.2f}, '
-                    f'loss_kl={loss_kl:.2f}, lambda={lambda_kl:.1e}     ', end='\r')
+                    f'loss_kl={loss_kl:.2f}, lambda={lambda_kl:.1e}, time={hr}:{m}:{sec} ', end='\r')
             if (iteration + 1) % self.args.save_steps == 0 or iteration + 1 == n_iterations:
                 self.save_model(iteration=iteration)
                 print()
